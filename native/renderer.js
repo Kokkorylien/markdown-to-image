@@ -15,16 +15,20 @@ const md = new MarkdownIt({
   engine: katex, delimiters: ['dollars', 'brackets'],
   katexOptions: { throwOnError: false, trust: false, strict: 'ignore', maxSize: 20, maxExpand: 1000 }
 });
-md.renderer.rules.image = (tokens, index) => `<span class="image-placeholder">[图片：${md.utils.escapeHtml(tokens[index].content || '图片')}，未载入外部图片]</span>`;
+let language = 'zh-CN';
+const text = key => window.markdownTranslations[language][key];
+md.renderer.rules.image = (tokens, index) => `<span class="image-placeholder">${md.utils.escapeHtml(text('imagePlaceholder').replace('{0}', tokens[index].content || text('image')))}</span>`;
 
-window.renderMarkdown = async (markdown, theme, id) => {
+window.renderMarkdown = async (markdown, theme, id, selectedLanguage) => {
   try {
+    language = selectedLanguage;
+    document.documentElement.lang = selectedLanguage;
     document.documentElement.dataset.theme = theme;
     const sheet = document.getElementById('code-style');
     const codeStyle = theme === 'dark' ? 'github-dark.css' : 'github.css';
     const styleReady = sheet.getAttribute('href') === codeStyle ? Promise.resolve() : new Promise((resolve, reject) => {
       sheet.onload = resolve;
-      sheet.onerror = () => reject(new Error('代码主题加载失败'));
+      sheet.onerror = () => reject(new Error(text('codeThemeFailed')));
       sheet.href = codeStyle;
     });
     const article = document.getElementById('content');

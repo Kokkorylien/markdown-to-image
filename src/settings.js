@@ -2,6 +2,14 @@ const tool = window.markdownTool;
 const byId = id => document.getElementById(id);
 const prettyHotkey = value => value.replace(/Control/g, 'Ctrl').replace(/CommandOrControl/g, 'Ctrl');
 let appliedTheme = 'light';
+let appliedLanguage;
+
+function applyLanguage(language) {
+  appliedLanguage = language;
+  window.markdownI18n.apply(language);
+  byId('language').value = language;
+  if (byId('saved').textContent) byId('saved').textContent = window.markdownI18n.text('saved');
+}
 
 function applyTheme(theme) {
   appliedTheme = theme;
@@ -10,6 +18,7 @@ function applyTheme(theme) {
 }
 
 function updateStatus(state) {
+  if (state.language !== appliedLanguage) applyLanguage(state.language);
   byId('status').textContent = state.status;
   byId('export').disabled = state.exporting;
   byId('copy-image').disabled = state.exporting;
@@ -37,6 +46,17 @@ async function invoke(action) {
 }
 byId('export').addEventListener('click', () => invoke(tool.exportClipboard));
 byId('copy-image').addEventListener('click', () => invoke(tool.copyClipboardImage));
+byId('language').addEventListener('change', async event => {
+  const select = event.target;
+  const previous = appliedLanguage;
+  const language = select.value;
+  applyLanguage(language);
+  select.disabled = true;
+  try {
+    const value = await invoke(() => tool.setLanguage(language));
+    applyLanguage(value ? value.language : previous);
+  } finally { select.disabled = false; }
+});
 byId('theme').addEventListener('change', async event => {
   const select = event.target;
   const previous = appliedTheme;
@@ -66,7 +86,7 @@ byId('choose-folder').addEventListener('click', async () => {
 byId('settings').addEventListener('submit', async event => {
   event.preventDefault();
   const value = await invoke(() => tool.saveConfig({ hotkey: byId('hotkey').value, pasteHotkey: byId('paste-hotkey').value, width: Number(byId('width').value), theme: byId('theme').value }));
-  if (value) { populate(value); byId('saved').textContent = '已保存'; }
+  if (value) { populate(value); byId('saved').textContent = window.markdownI18n.text('saved'); }
 });
 tool.onStatus(updateStatus);
 invoke(tool.getState).then(value => { if (value) { populate(value); tool.ready(); } });

@@ -1,5 +1,7 @@
 # Markdown 快捷转图片
 
+简体中文 | [English](README.en.md)
+
 Windows 原生轻量托盘工具：复制回复，按 `Ctrl+Alt+V`，直接粘贴为图片。不调用 AI，也不上传剪贴板。
 
 使用 C# / WinForms 和系统已安装的 WebView2 排版，不附带 Electron、Chromium 或 Node.js。运行需要 Windows x64、.NET Framework 4.8 和 Microsoft Edge WebView2 Runtime；Windows 10/11 通常已安装这些组件。缺少 WebView2 时程序会提示安装。
@@ -25,6 +27,8 @@ Windows 原生轻量托盘工具：复制回复，按 `Ctrl+Alt+V`，直接粘�
 图片粘贴操作不额外保存文件。需要文件时，使用保存快捷键（默认 **Ctrl+Alt+M**）或“保存剪贴板为图片”按钮，图片默认保存在 Windows **图片\Markdown图片**。
 
 右键托盘图标可打开设置、保存目录或退出。关闭设置窗口后仍在后台运行。设置中可改快捷键、保存位置、图片宽度和主题。
+
+设置页的“语言 / Language”可选择 **简体中文**或 **English**，立即生效并记住选择，覆盖界面、托盘菜单、通知及程序自身的错误提示。首次启动根据 Windows 界面语言选择中文或英语。Markdown 原文不会被翻译。
 
 如果快捷键被其他程序占用，设置窗口会提示更换。图片粘贴和保存快捷键可以分别设置。
 

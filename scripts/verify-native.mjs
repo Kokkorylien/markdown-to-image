@@ -49,5 +49,7 @@ assert.equal(settings.status.includes('undefined'), false);
 assert.ok(settings.hotkey && settings.pasteHotkey && settings.outputDir);
 assert.equal(settings.themeChecks.length, 2);
 assert.deepEqual(settings.themeChecks.map(value => value.theme).sort(), ['dark', 'light']);
+assert.deepEqual(settings.languageChecks.map(value => value.language).sort(), ['en', 'zh-CN']);
 console.log('PASS: real WebView2 settings page, initial native response, save settings, page screenshot');
 console.log('PASS: theme dropdown updates UI, persisted config, and actual PNG colors');
+console.log('PASS: Chinese/English UI, language persistence, native validation, and image placeholders');

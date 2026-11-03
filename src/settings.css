@@ -36,6 +36,9 @@ label { display: block; font-weight: 600; margin-bottom: 7px; }
 .toggle input:disabled { opacity: .5; }
 .path { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; margin-bottom: 10px; line-height: 1.5; }
 .folder-actions button { padding: 5px 9px; font-size: 12px; }
+.language-setting { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.language-setting label { margin: 0; }
+.language-setting select { width: 180px; }
 form { margin-top: 18px; border-top: 1px solid var(--divider); padding-top: 17px; }
 input, select { width: 100%; padding: 9px 10px; background: var(--input); color: var(--foreground); }
 input:focus, select:focus { outline: 2px solid var(--focus); outline-offset: 1px; }

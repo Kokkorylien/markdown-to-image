@@ -51,7 +51,7 @@ internal sealed class App : Form
     Label settingsLoading;
     TaskCompletionSource<bool> settingsReady;
     NotifyIcon tray;
-    string status = "准备就绪", recentFile;
+    string status, recentFile;
     bool busy, exiting;
     DataObject integrationClipboard;
     int renderId;
@@ -67,7 +67,7 @@ internal sealed class App : Form
         FormBorderStyle = FormBorderStyle.None;
         Load += async delegate { await Start(); };
         FormClosing += delegate(object sender, FormClosingEventArgs e) {
-            if (busy && !exiting) { e.Cancel = true; SetStatus("正在转换，完成后再退出。"); }
+            if (busy && !exiting) { e.Cancel = true; SetStatus(L.T("busyExit")); }
         };
     }
 
@@ -80,13 +80,16 @@ internal sealed class App : Form
     {
         try
         {
+            L.Load(root);
             bool first = !File.Exists(Path.Combine(profile, "settings.json"));
             config = new Dictionary<string, object> {
                 {"hotkey", "Control+Alt+M"}, {"pasteHotkey", "Control+Alt+V"},
-                {"outputDir", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Markdown图片")},
-                {"width", 1080}, {"theme", "light"}, {"copyAfterExport", true}
+                {"outputDir", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), L.Language == "en" ? "Markdown Images" : "Markdown图片")},
+                {"width", 1080}, {"theme", "light"}, {"copyAfterExport", true}, {"language", L.Language}
             };
             if (!first) foreach (var pair in Json.Decode(File.ReadAllText(Path.Combine(profile, "settings.json")))) config[pair.Key] = pair.Value;
+            L.Language = Convert.ToString(config["language"]);
+            status = L.T("ready");
             Directory.CreateDirectory(profile);
             if (first) Save();
             environment = await CoreWebView2Environment.CreateAsync(null, Path.Combine(profile, "WebView2"), new CoreWebView2EnvironmentOptions("--disable-backgrounding-occluded-windows --disable-renderer-backgrounding"));
@@ -107,17 +110,17 @@ internal sealed class App : Form
             CreateTray();
             var failed = new List<string>();
             for (int id = 1; id <= 2; id++) if (!Native.Register(Handle, id, Convert.ToString(config[id == 1 ? "hotkey" : "pasteHotkey"]))) failed.Add(Convert.ToString(config[id == 1 ? "hotkey" : "pasteHotkey"]));
-            if (failed.Count > 0) { SetStatus("快捷键被占用：" + string.Join("、", failed)); ShowSettings(); }
+            if (failed.Count > 0) { SetStatus(L.T("shortcutUnavailable") + string.Join(L.T("listSeparator"), failed)); ShowSettings(); }
             else if (first) ShowSettings();
             if (args.Length > 0 && args[0] == "--integration") await Integration(args[1], args[2]);
         }
         catch (WebView2RuntimeNotFoundException) {
-            MessageBox.Show("轻量版需要 Microsoft Edge WebView2 Runtime。请安装该运行时后重试：https://go.microsoft.com/fwlink/p/?LinkId=2124703", "缺少 WebView2", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(L.T("missingRuntime"), L.T("missingRuntimeTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             Environment.ExitCode = 1; Exit();
         }
         catch (Exception error) {
             if (args.Length > 0) File.WriteAllText(Path.Combine(root, "verify-error.txt"), error.ToString());
-            else MessageBox.Show(error.Message, "启动失败");
+            else MessageBox.Show(error.Message, L.T("startupFailed"));
             Environment.ExitCode = 1; Exit();
         }
     }
@@ -147,7 +150,7 @@ internal sealed class App : Form
         EventHandler<CoreWebView2NavigationCompletedEventArgs> handler = null;
         handler = delegate(object sender, CoreWebView2NavigationCompletedEventArgs e) {
             view.CoreWebView2.NavigationCompleted -= handler;
-            if (e.IsSuccess) ready.TrySetResult(true); else ready.TrySetException(new Exception("页面加载失败：" + e.WebErrorStatus));
+            if (e.IsSuccess) ready.TrySetResult(true); else ready.TrySetException(new Exception(L.T("pageLoadFailed") + e.WebErrorStatus));
         };
         view.CoreWebView2.NavigationCompleted += handler;
         view.CoreWebView2.Navigate(url);
@@ -173,7 +176,7 @@ internal sealed class App : Form
         var completion = new TaskCompletionSource<Dictionary<string, object>>();
         renders.Add(id, completion);
         try {
-            await renderer.CoreWebView2.ExecuteScriptAsync("window.renderMarkdown(" + Json.Encode(markdown) + "," + Json.Encode(theme) + "," + id + ")");
+            await renderer.CoreWebView2.ExecuteScriptAsync("window.renderMarkdown(" + Json.Encode(markdown) + "," + Json.Encode(theme) + "," + id + "," + Json.Encode(L.Language) + ")");
             var metrics = await completion.Task;
             var screenshot = Json.Decode(await renderer.CoreWebView2.CallDevToolsProtocolMethodAsync("Page.captureScreenshot", Json.Encode(new {
                 format = "png", captureBeyondViewport = true,
@@ -189,13 +192,13 @@ internal sealed class App : Form
     void CreateTray()
     {
         var menu = new ContextMenuStrip();
-        menu.Items.Add("保存剪贴板为图片", null, async delegate { await ConvertClipboard(false, IntPtr.Zero); });
-        menu.Items.Add("转为图片并复制", null, async delegate { await ConvertClipboard(true, IntPtr.Zero); });
-        menu.Items.Add("设置与使用说明", null, delegate { ShowSettings(); });
-        menu.Items.Add("打开保存目录", null, delegate { OpenFolder(); });
+        menu.Items.Add(L.T("saveClipboard"), null, async delegate { await ConvertClipboard(false, IntPtr.Zero); }).Tag = "saveClipboard";
+        menu.Items.Add(L.T("copyImage"), null, async delegate { await ConvertClipboard(true, IntPtr.Zero); }).Tag = "copyImage";
+        menu.Items.Add(L.T("settingsMenu"), null, delegate { ShowSettings(); }).Tag = "settingsMenu";
+        menu.Items.Add(L.T("outputFolderMenu"), null, delegate { OpenFolder(); }).Tag = "outputFolderMenu";
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("退出", null, delegate { if (!busy) Exit(); else SetStatus("正在转换，完成后再退出。"); });
-        tray = new NotifyIcon { Icon = SystemIcons.Application, Text = "Markdown 转图片 · 轻量版", ContextMenuStrip = menu, Visible = true };
+        menu.Items.Add(L.T("quit"), null, delegate { if (!busy) Exit(); else SetStatus(L.T("busyExit")); }).Tag = "quit";
+        tray = new NotifyIcon { Icon = SystemIcons.Application, Text = L.T("appName"), ContextMenuStrip = menu, Visible = true };
         tray.DoubleClick += delegate { ShowSettings(); };
     }
 
@@ -208,7 +211,7 @@ internal sealed class App : Form
     void SetStatus(string value)
     {
         status = value;
-        string tip = "Markdown 转图片 · " + value;
+        string tip = L.T("appName") + " · " + value;
         if (tray != null) tray.Text = tip.Substring(0, Math.Min(63, tip.Length));
         if (settingsView != null && settingsView.CoreWebView2 != null) settingsView.CoreWebView2.PostWebMessageAsJson(Json.Encode(new { statusEvent = true, value = State() }));
     }
@@ -237,21 +240,21 @@ internal sealed class App : Form
 
     async Task<Dictionary<string, object>> ConvertClipboard(bool copyOnly, IntPtr target)
     {
-        if (busy) return new Dictionary<string, object> { {"ok", false}, {"message", "正在转换，请稍候。"} };
+        if (busy) return new Dictionary<string, object> { {"ok", false}, {"message", L.T("busy")} };
         busy = true;
         var timer = Stopwatch.StartNew();
         bool copied = false;
         string saved = null;
-        SetStatus("正在生成图片…");
+        SetStatus(L.T("generating"));
         try {
             string markdown = Clipboard.GetText();
             if (string.IsNullOrWhiteSpace(markdown)) {
                 if (target != IntPtr.Zero && Clipboard.ContainsImage()) {
                     await Native.Paste(target); copied = true;
-                    SetStatus("已粘贴剪贴板中的已有图片；更换主题后请重新复制 Markdown 转换");
+                    SetStatus(L.T("pastedExisting"));
                     return new Dictionary<string, object> { {"ok", true}, {"copied", true}, {"pasteSent", true} };
                 }
-                throw new Exception("剪贴板没有文字，请先复制 Markdown 或一条回复。");
+                throw new Exception(L.T("clipboardEmpty"));
             }
             var result = await Render(markdown, Convert.ToInt32(config["width"]), Convert.ToString(config["theme"]));
             if (!copyOnly) {
@@ -260,15 +263,15 @@ internal sealed class App : Form
             }
             if (copyOnly || Convert.ToBoolean(config["copyAfterExport"])) { CopyImage(result.Png); copied = true; }
             if (target != IntPtr.Zero) await Native.Paste(target);
-            string action = target != IntPtr.Zero ? "已复制并发送图片粘贴" : copyOnly ? "已复制图片，可按 Ctrl+V 粘贴" : copied ? "已保存并复制，可按 Ctrl+V 粘贴" : "已保存";
+            string action = target != IntPtr.Zero ? L.T("pastedNew") : copyOnly ? L.T("copiedImage") : copied ? L.T("savedAndCopied") : L.T("saved");
             SetStatus(action + " · " + result.Metrics["width"] + " × " + result.Metrics["height"] + " · " + timer.ElapsedMilliseconds + " ms");
-            if (target == IntPtr.Zero) Notice("Markdown 图片", action);
+            if (target == IntPtr.Zero) Notice(L.T("imageNotification"), action);
             result.Metrics["ok"] = true; result.Metrics["copied"] = copied; result.Metrics["output"] = saved;
             return result.Metrics;
         }
         catch (Exception error) {
-            string message = (copied ? "图片已复制：" : saved != null ? "图片已保存：" : "转换失败：") + error.Message;
-            SetStatus(message); Notice("导出未完成", message);
+            string message = (copied ? L.T("copiedError") : saved != null ? L.T("savedError") : L.T("conversionError")) + error.Message;
+            SetStatus(message); Notice(L.T("exportIncomplete"), message);
             return new Dictionary<string, object> { {"ok", false}, {"message", message} };
         }
         finally { busy = false; SetStatus(status); }
@@ -279,9 +282,9 @@ internal sealed class App : Form
         if (settings != null) { settings.Show(); settings.Activate(); return; }
         bool dark = Convert.ToString(config["theme"]) == "dark";
         var background = dark ? Color.FromArgb(23, 25, 29) : Color.FromArgb(245, 247, 250);
-        var window = new Form { Text = "Markdown 快捷转图片 · 轻量版", ClientSize = new Size(650, 870), MinimumSize = new Size(600, 650), StartPosition = FormStartPosition.CenterScreen, BackColor = background };
+        var window = new Form { Text = L.T("settingsTitle"), ClientSize = new Size(650, 870), MinimumSize = new Size(600, 650), StartPosition = FormStartPosition.CenterScreen, BackColor = background };
         var view = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = background };
-        var loading = new Label { Text = "正在加载设置…", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, BackColor = background, ForeColor = dark ? Color.FromArgb(165, 175, 188) : Color.FromArgb(92, 104, 120) };
+        var loading = new Label { Text = L.T("loadingSettings"), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, BackColor = background, ForeColor = dark ? Color.FromArgb(165, 175, 188) : Color.FromArgb(92, 104, 120) };
         settings = window; settingsView = view;
         settingsLoading = loading; settingsReady = new TaskCompletionSource<bool>();
         window.Controls.Add(view); window.Controls.Add(loading); loading.BringToFront();
@@ -297,7 +300,7 @@ internal sealed class App : Form
             await Navigate(view, Origin + "settings.html");
         }
         catch (Exception error) {
-            if (!window.IsDisposed) { loading.Text = "设置加载失败：" + error.Message; loading.BringToFront(); }
+            if (!window.IsDisposed) { loading.Text = L.T("settingsLoadFailed") + error.Message; loading.BringToFront(); }
         }
     }
 
@@ -314,18 +317,19 @@ internal sealed class App : Form
             }
             else if (channel == "export-clipboard") value = await ConvertClipboard(false, IntPtr.Zero);
             else if (channel == "copy-clipboard-image") value = await ConvertClipboard(true, IntPtr.Zero);
-            else if (channel == "set-copy-after-export") { config["copyAfterExport"] = Convert.ToBoolean(message["value"]); Save(); SetStatus("自动复制设置已保存"); value = State(); }
+            else if (channel == "set-copy-after-export") { config["copyAfterExport"] = Convert.ToBoolean(message["value"]); Save(); SetStatus(L.T("autoCopySaved")); value = State(); }
             else if (channel == "set-theme") { SetTheme(Convert.ToString(message["value"])); value = State(); }
+            else if (channel == "set-language") { SetLanguage(Convert.ToString(message["value"])); value = State(); }
             else if (channel == "save-config") { SaveSettings((Dictionary<string, object>)message["value"]); value = State(); }
             else if (channel == "choose-folder") {
-                using (var picker = new FolderBrowserDialog { SelectedPath = Convert.ToString(config["outputDir"]), Description = "选择图片保存目录" }) {
+                using (var picker = new FolderBrowserDialog { SelectedPath = Convert.ToString(config["outputDir"]), Description = L.T("chooseFolder") }) {
                     if (picker.ShowDialog(settings) == DialogResult.OK) { config["outputDir"] = picker.SelectedPath; Save(); }
                 }
                 value = State();
             }
             else if (channel == "open-folder") OpenFolder();
             else if (channel == "open-recent" && recentFile != null) Process.Start(recentFile);
-            else if (channel != "open-recent") throw new Exception("未知操作。");
+            else if (channel != "open-recent") throw new Exception(L.T("unknownAction"));
             if (settingsView != null) settingsView.CoreWebView2.PostWebMessageAsJson(Json.Encode(new { id = message["id"], ok = true, value = value }));
         }
         catch (Exception error) {
@@ -347,29 +351,42 @@ internal sealed class App : Form
 
     void SetTheme(string theme)
     {
-        if (theme != "light" && theme != "dark") throw new Exception("请选择有效主题。");
+        if (theme != "light" && theme != "dark") throw new Exception(L.T("invalidTheme"));
         var updated = new Dictionary<string, object>(config);
         updated["theme"] = theme;
         File.WriteAllText(Path.Combine(profile, "settings.json"), Json.Encode(updated));
         config = updated;
         UpdateSettingsBackground();
-        SetStatus((theme == "dark" ? "深色" : "浅色") + "主题已应用，新生成的图片立即生效");
+        SetStatus((theme == "dark" ? L.T("dark") : L.T("light")) + L.T("themeApplied"));
+    }
+
+    void SetLanguage(string language)
+    {
+        if (language != "zh-CN" && language != "en") throw new Exception(L.T("invalidLanguage"));
+        var updated = new Dictionary<string, object>(config);
+        updated["language"] = language;
+        File.WriteAllText(Path.Combine(profile, "settings.json"), Json.Encode(updated));
+        config = updated; L.Language = language;
+        if (settings != null) settings.Text = L.T("settingsTitle");
+        if (settingsLoading != null) settingsLoading.Text = L.T("loadingSettings");
+        if (tray != null) foreach (ToolStripItem item in tray.ContextMenuStrip.Items) if (item.Tag is string) item.Text = L.T((string)item.Tag);
+        SetStatus(L.T("languageSaved"));
     }
 
     void SaveSettings(Dictionary<string, object> input)
     {
         int width = Convert.ToInt32(input["width"]);
         string theme = Convert.ToString(input["theme"]);
-        if (width != 720 && width != 1080 && width != 1440) throw new Exception("请选择有效的图片宽度。");
-        if (theme != "light" && theme != "dark") throw new Exception("请选择有效主题。");
+        if (width != 720 && width != 1080 && width != 1440) throw new Exception(L.T("invalidWidth"));
+        if (theme != "light" && theme != "dark") throw new Exception(L.T("invalidTheme"));
         string hotkey = Convert.ToString(input["hotkey"]), paste = Convert.ToString(input["pasteHotkey"]);
-        if (Native.Parse(hotkey).Equals(Native.Parse(paste))) throw new Exception("保存和粘贴快捷键不能相同。");
+        if (Native.Parse(hotkey).Equals(Native.Parse(paste))) throw new Exception(L.T("duplicateHotkeys"));
         string oldHotkey = Convert.ToString(config["hotkey"]), oldPaste = Convert.ToString(config["pasteHotkey"]);
         Native.UnregisterHotKey(Handle, 1); Native.UnregisterHotKey(Handle, 2);
         if (!Native.Register(Handle, 1, hotkey) || !Native.Register(Handle, 2, paste)) {
             Native.UnregisterHotKey(Handle, 1); Native.UnregisterHotKey(Handle, 2);
             Native.Register(Handle, 1, oldHotkey); Native.Register(Handle, 2, oldPaste);
-            throw new Exception("快捷键被占用，请换一个组合。");
+            throw new Exception(L.T("hotkeyOccupied"));
         }
         var before = new Dictionary<string, object>(config);
         config["hotkey"] = hotkey; config["pasteHotkey"] = paste; config["width"] = width; config["theme"] = theme;
@@ -381,7 +398,7 @@ internal sealed class App : Form
             throw;
         }
         UpdateSettingsBackground();
-        SetStatus("设置已保存");
+        SetStatus(L.T("settingsSaved"));
     }
 
     async Task Verify(string manifest)
@@ -424,6 +441,7 @@ internal sealed class App : Form
         };
         await Navigate(view, Origin + "settings.html");
         await settingsReady.Task;
+        await view.CoreWebView2.CallDevToolsProtocolMethodAsync("Emulation.setDeviceMetricsOverride", "{\"width\":650,\"height\":870,\"deviceScaleFactor\":1,\"mobile\":false}");
         var values = Json.Decode(await view.CoreWebView2.ExecuteScriptAsync("({status:document.getElementById('status').textContent,hotkey:document.getElementById('hotkey').value,pasteHotkey:document.getElementById('paste-hotkey').value,theme:document.getElementById('theme').value,outputDir:document.getElementById('output-dir').textContent,background:getComputedStyle(document.body).backgroundColor})"));
         if (Convert.ToString(values["hotkey"]) != Convert.ToString(config["hotkey"]) || Convert.ToString(values["status"]).Contains("undefined")) throw new Exception("设置页未正确读取原生配置。");
         var input = new { hotkey = config["hotkey"], pasteHotkey = config["pasteHotkey"], width = config["width"], theme = config["theme"] };
@@ -455,6 +473,29 @@ internal sealed class App : Form
         }
         finally { if (Convert.ToString(config["theme"]) != originalTheme) SetTheme(originalTheme); }
         values["themeChecks"] = themeChecks;
+        string originalLanguage = L.Language;
+        var languageChecks = new List<object>();
+        await view.CoreWebView2.ExecuteScriptAsync("window.verifySetLanguage=window.markdownTool.setLanguage;window.markdownTool.setLanguage=language=>window.verifySetLanguage(language).then(value=>{chrome.webview.postMessage({channel:'verification-result',value});return value;});");
+        try {
+            foreach (string language in new[] { originalLanguage == "en" ? "zh-CN" : "en", originalLanguage }) {
+                saved = new TaskCompletionSource<Dictionary<string, object>>();
+                await view.CoreWebView2.ExecuteScriptAsync("document.getElementById('language').value=" + Json.Encode(language) + ";document.getElementById('language').dispatchEvent(new Event('change'));");
+                var changed = await saved.Task;
+                if (!Convert.ToBoolean(changed["ok"])) throw new Exception("Language switch failed.");
+                var pageValues = Json.Decode(await view.CoreWebView2.ExecuteScriptAsync("({language:document.documentElement.lang,title:document.title,button:document.getElementById('export').textContent,status:document.getElementById('status').textContent})"));
+                if (Convert.ToString(pageValues["language"]) != language || Convert.ToString(pageValues["button"]) != L.T("saveClipboard") || Convert.ToString(pageValues["title"]) != L.T("settingsTitle")) throw new Exception("Settings translations do not match the selected language.");
+                if (Convert.ToString(Json.Decode(File.ReadAllText(Path.Combine(profile, "settings.json")))["language"]) != language) throw new Exception("Language preference was not saved.");
+                try { Native.Parse("Control+NotAKey"); throw new Exception("Invalid shortcut accepted."); } catch (Exception error) { if (error.Message != L.T("shortcutExample")) throw; }
+                await Render("![Example](https://example.invalid/image.png)", 1080, Convert.ToString(config["theme"]));
+                string placeholder = await renderer.CoreWebView2.ExecuteScriptAsync("document.querySelector('.image-placeholder').textContent");
+                if (placeholder != Json.Encode(L.T("imagePlaceholder").Replace("{0}", "Example"))) throw new Exception("Image placeholder was not localized.");
+                var page = Json.Decode(await view.CoreWebView2.CallDevToolsProtocolMethodAsync("Page.captureScreenshot", "{\"format\":\"png\",\"captureBeyondViewport\":true}"));
+                File.WriteAllBytes(resultFile + "." + language + ".ui.png", Convert.FromBase64String(Convert.ToString(page["data"])));
+                languageChecks.Add(pageValues);
+            }
+        }
+        finally { if (L.Language != originalLanguage) SetLanguage(originalLanguage); }
+        values["languageChecks"] = languageChecks;
         var screenshot = Json.Decode(await view.CoreWebView2.CallDevToolsProtocolMethodAsync("Page.captureScreenshot", "{\"format\":\"png\",\"captureBeyondViewport\":true}"));
         File.WriteAllBytes(resultFile + ".png", Convert.FromBase64String(Convert.ToString(screenshot["data"])));
         File.WriteAllText(resultFile, Json.Encode(values));
@@ -544,11 +585,11 @@ internal static class Native
             if (token == "CTRL" || token == "CONTROL" || token == "COMMANDORCONTROL") modifiers |= 2;
             else if (token == "ALT") modifiers |= 1;
             else if (token == "SHIFT") modifiers |= 4;
-            else if (token.Length == 1 && char.IsLetterOrDigit(token[0])) { if (key != 0) throw new Exception("快捷键只能包含一个字母、数字或功能键。"); key = token[0]; }
-            else if (token.StartsWith("F")) { int number; if (!int.TryParse(token.Substring(1), out number) || number < 1 || number > 24 || key != 0) throw new Exception("快捷键无效。"); key = (uint)(111 + number); }
-            else throw new Exception("快捷键无效，例如 Control+Alt+V。");
+            else if (token.Length == 1 && char.IsLetterOrDigit(token[0])) { if (key != 0) throw new Exception(L.T("oneShortcutKey")); key = token[0]; }
+            else if (token.StartsWith("F")) { int number; if (!int.TryParse(token.Substring(1), out number) || number < 1 || number > 24 || key != 0) throw new Exception(L.T("invalidShortcut")); key = (uint)(111 + number); }
+            else throw new Exception(L.T("shortcutExample"));
         }
-        if (key == 0) throw new Exception("快捷键缺少字母、数字或功能键。");
+        if (key == 0) throw new Exception(L.T("missingShortcutKey"));
         return Tuple.Create(modifiers, key);
     }
     public static bool Register(IntPtr handle, int id, string hotkey) { var value = Parse(hotkey); return RegisterHotKey(handle, id, value.Item1 | 0x4000, value.Item2); }
@@ -557,15 +598,15 @@ internal static class Native
         int[] keys = { 0x10, 0x11, 0x12, 0x5b, 0x5c, 0x56 };
         var timer = Stopwatch.StartNew();
         while (keys.Any(key => (GetAsyncKeyState(key) & 0x8000) != 0)) {
-            if (timer.ElapsedMilliseconds >= 3000) throw new Exception("请松开快捷键，再按 Ctrl+V 粘贴。");
+            if (timer.ElapsedMilliseconds >= 3000) throw new Exception(L.T("releaseShortcut"));
             await Task.Delay(12);
         }
-        if (target == IntPtr.Zero || GetForegroundWindow() != target) throw new Exception("输入窗口已切换，请在目标位置按 Ctrl+V 粘贴。");
+        if (target == IntPtr.Zero || GetForegroundWindow() != target) throw new Exception(L.T("targetChanged"));
         var inputs = new[] { Key(0x11, false), Key(0x56, false), Key(0x56, true), Key(0x11, true) };
         uint sent = SendInput(4, inputs, Marshal.SizeOf(typeof(Input)));
         if (sent != 4) {
             if (sent > 0) SendInput(2, new[] { Key(0x56, true), Key(0x11, true) }, Marshal.SizeOf(typeof(Input)));
-            throw new Exception("当前应用未接受自动粘贴，请按 Ctrl+V 粘贴图片。");
+            throw new Exception(L.T("pasteRejected"));
         }
     }
 }

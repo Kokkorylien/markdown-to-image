@@ -25,6 +25,7 @@ window.markdownTool = {
   copyClipboardImage: () => invoke('copy-clipboard-image'),
   setCopyAfterExport: value => invoke('set-copy-after-export', value),
   setTheme: value => invoke('set-theme', value),
+  setLanguage: value => invoke('set-language', value),
   chooseFolder: () => invoke('choose-folder'),
   openFolder: () => invoke('open-folder'),
   openRecent: () => invoke('open-recent'),

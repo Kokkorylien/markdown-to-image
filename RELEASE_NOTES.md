@@ -9,6 +9,7 @@
 - 主题同时应用于设置界面和新生成的图片，切换立即保存；已有剪贴板图片保留原样。
 - 按 **Ctrl+Alt+M** 保存为 PNG，支持调整保存目录与全局快捷键。
 - 提供“转为图片并复制”按钮和保存后自动复制开关。
+- 简体中文 / English 可选，切换立即保存；提供双语界面、托盘菜单、提示及 README。
 - 转换在本机完成，不调用 AI，不上传剪贴板，不加载外部图片。
 
 ## 下载与运行
@@ -28,3 +29,17 @@
 - 已验证复制图片、仅保存、设置持久化和两个快捷键分别注册。
 
 `SHA256SUMS.txt` 提供 Windows 压缩包的 SHA-256 校验值。
+
+## English
+
+Copy Markdown and press **Ctrl+Alt+V** in an image-capable input to convert and paste it as an image. The image stays in the clipboard for subsequent **Ctrl+V** pastes.
+
+- Native C# / WinForms app using the installed WebView2 Runtime; no bundled Electron, Chromium, or Node.js.
+- Select **English** or **简体中文** in settings. The choice is saved immediately and applies to the UI, tray menu, notifications, and the app's own error messages. Both READMEs are included in the repository.
+- Tables, syntax highlighting, local math rendering, long images, light/dark themes, and 720/1080/1440 px widths.
+- **Ctrl+Alt+M** saves a PNG. Saving, copying, automatic copying after saving, and both shortcuts are configurable.
+- Local conversion with no AI calls, clipboard uploads, or remote image loading. Existing clipboard images keep their original theme.
+
+Download `MarkdownToImage-v1.0.0-win32-x64.zip` (about **1 MB**, about **2.8 MB** extracted), extract the entire folder, and run `MarkdownToImage.exe`. Keep the supporting files. Windows x64, .NET Framework 4.8, and Microsoft Edge WebView2 Runtime are required. If WebView2 is missing, install the [official Microsoft runtime](https://go.microsoft.com/fwlink/p/?LinkId=2124703) first.
+
+This release only provides the lightweight package. `SHA256SUMS.txt` contains its checksum. Validation covers the actual paste flow, long image completeness, rendered theme colors, native settings, and Chinese/English switching and persistence.
