@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'">
+  <title>Markdown 快捷转图片</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <main>
+    <div class="eyebrow">MARKDOWN → PNG</div>
+    <h1>复制 Markdown，直接粘贴图片。</h1>
+    <p class="intro">在目标输入框按 <kbd id="paste-hotkey-label">Ctrl+Alt+V</kbd>，转为图片并立即粘贴。<br>之后按 Ctrl+V 也能粘贴这张图；按 <kbd id="hotkey-label">Ctrl+Alt+M</kbd> 可另存图片。</p>
+    <div class="actions">
+      <button id="export" class="primary">保存剪贴板为图片</button>
+      <button id="copy-image">转为图片并复制</button>
+      <button id="open-recent" disabled>查看最近保存</button>
+    </div>
+    <div id="status" role="status">准备就绪</div>
+    <section>
+      <label class="toggle" for="copy-after-export">
+        <span>保存后自动复制图片<small>只影响保存操作；图片粘贴快捷键始终复制并粘贴图片</small></span>
+        <input id="copy-after-export" type="checkbox" role="switch">
+      </label>
+      <label>保存位置</label>
+      <div id="output-dir" class="path"></div>
+      <div class="folder-actions"><button id="choose-folder">更改位置</button><button id="open-folder">打开文件夹</button></div>
+      <form id="settings">
+        <label for="paste-hotkey">图片粘贴快捷键</label>
+        <input id="paste-hotkey" type="text" value="Control+Alt+V" spellcheck="false" autocomplete="off">
+        <small>转换剪贴板文字，复制图片并粘贴到当前输入位置</small>
+        <label class="save-hotkey-label" for="hotkey">保存图片快捷键</label>
+        <input id="hotkey" type="text" value="Control+Alt+M" spellcheck="false" autocomplete="off" aria-describedby="hotkey-hint">
+        <small id="hotkey-hint">例如 Control+Alt+M 或 Control+Shift+F8</small>
+        <div class="columns">
+          <div><label for="width">图片宽度</label><select id="width"><option value="720">720 px · 窄版</option><option value="1080">1080 px · 标准</option><option value="1440">1440 px · 宽表格</option></select></div>
+          <div><label for="theme">界面与图片主题</label><select id="theme" aria-describedby="theme-hint"><option value="light">浅色</option><option value="dark">深色</option></select><small id="theme-hint">切换立即保存。已有图片保留原样，重新复制 Markdown 后转换。</small></div>
+        </div>
+        <button type="submit">保存设置</button><span id="saved" role="status"></span>
+      </form>
+    </section>
+    <footer>支持表格、代码高亮、数学公式。关闭窗口后仍在托盘运行；右键托盘图标可退出。内容在本机处理，外部图片显示占位文字。</footer>
+  </main>
+  <script src="settings.js"></script>
+</body>
+</html>

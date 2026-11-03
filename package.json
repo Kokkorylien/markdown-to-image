@@ -1,0 +1,24 @@
+{
+  "name": "markdown-to-image",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lightweight native Windows Markdown-to-image paste tool using the installed WebView2 runtime",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "start": "node scripts/run-native.mjs",
+    "build": "node scripts/build-native.mjs",
+    "test": "node tests/settings-bridge.cjs && node scripts/build-native.mjs && node scripts/verify-native.mjs",
+    "pack": "node scripts/pack.mjs"
+  },
+  "dependencies": {
+    "highlight.js": "11.12.0",
+    "katex": "0.19.1",
+    "markdown-it": "15.0.3",
+    "markdown-it-texmath": "1.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "extract-zip": "2.0.1",
+    "fflate": "0.8.2"
+  }
+}

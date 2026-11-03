@@ -1,0 +1,48 @@
+:root {
+  color-scheme: light;
+  --background: #fff;
+  --foreground: #24292f;
+  --muted: #656d76;
+  --line: #d8dee4;
+  --subtle: #f6f8fa;
+  --accent: #0969da;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #17191d;
+  --foreground: #e6edf3;
+  --muted: #9ba5b1;
+  --line: #373d46;
+  --subtle: #22262d;
+  --accent: #79b8ff;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--background); color: var(--foreground); }
+html { scrollbar-width: none; }
+body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 18px; line-height: 1.75; }
+article { padding: 42px 48px 46px; overflow-wrap: anywhere; }
+article > :first-child { margin-top: 0; }
+article > :last-child { margin-bottom: 0; }
+h1, h2, h3, h4, h5, h6 { line-height: 1.4; font-weight: 650; margin: 1.35em 0 .6em; }
+h1 { font-size: 1.9em; padding-bottom: .35em; border-bottom: 1px solid var(--line); }
+h2 { font-size: 1.5em; }
+h3 { font-size: 1.2em; }
+p, ul, ol, blockquote, pre, table { margin: 0 0 1em; }
+li > p { margin: .4em 0; }
+ul, ol { padding-left: 1.6em; }
+a { color: var(--accent); text-decoration: none; }
+blockquote { border-left: 4px solid var(--line); color: var(--muted); padding: 0 1em; margin-left: 0; margin-right: 0; }
+blockquote > :last-child { margin-bottom: 0; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 1.8em 0; }
+code { font-family: Consolas, "Cascadia Code", "Microsoft YaHei", monospace; font-size: .88em; }
+:not(pre) > code { background: var(--subtle); padding: .15em .35em; border-radius: 5px; white-space: break-spaces; }
+pre.hljs { position: relative; padding: 17px 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--subtle); line-height: 1.6; }
+pre code { display: block; padding: 0; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; }
+.code-language { font-family: "Segoe UI", sans-serif; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 10px; }
+table { width: 100%; border-collapse: collapse; table-layout: auto; font-size: .94em; }
+th, td { border: 1px solid var(--line); padding: 9px 13px; min-width: 0; overflow-wrap: anywhere; }
+th { background: var(--subtle); font-weight: 650; }
+tr:nth-child(even) { background: var(--subtle); }
+.katex-display { margin: 1.1em 0; overflow: visible; }
+.katex { font-size: 1.08em; }
+.image-placeholder { color: var(--muted); font-size: .9em; }
