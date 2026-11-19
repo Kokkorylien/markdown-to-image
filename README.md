@@ -14,7 +14,7 @@ Windows 原生轻量托盘工具：复制回复，按 `Ctrl+Alt+V`，直接粘�
 
 ### 下载免安装版
 
-从 [GitHub Releases](https://github.com/Kokkorylien/markdown-to-image/releases/latest) 下载 `MarkdownToImage-v1.0.0-win32-x64.zip`，解压整个文件夹，双击其中的 `MarkdownToImage.exe` 即可。适用于 Windows x64，不需要安装 Node.js。
+从 [GitHub Releases](https://github.com/Kokkorylien/markdown-to-image/releases/latest) 下载 `MarkdownToImage-v1.1.0-win32-x64.zip`，解压整个文件夹，双击其中的 `MarkdownToImage.exe` 即可。适用于 Windows x64，不需要安装 Node.js。
 
 ### 从源码运行
 
@@ -41,6 +41,12 @@ Windows 原生轻量托盘工具：复制回复，按 `Ctrl+Alt+V`，直接粘�
 转换使用文字剪贴板；若来源仅复制纯文本，已丢失的 Markdown 格式无法恢复。图片写入剪贴板后，如需再次转换，请重新复制 Markdown 文字。
 
 重复按图片粘贴快捷键时，若剪贴板已经是图片，直接粘贴当前图片。转换期间请保持目标输入框不变；若切换窗口，会保留复制好的图片，提示手动 Ctrl+V。普通权限程序不能向管理员权限窗口自动发送粘贴键。
+
+## 编辑与实时预览
+
+双击托盘图标打开窗口，进入“编辑预览”：左侧是纯文本 Markdown 编辑区，右侧实时显示排版结果，支持表格、代码高亮与数学公式。输入、粘贴或修改文字后会自动更新预览；预览不会修改剪贴板。
+
+点击“复制为图片”可将当前编辑内容转为图片，再用 Ctrl+V 粘贴；“保存为图片”使用设置中的保存位置、图片宽度和自动复制选项。预览跟随当前语言与深浅色主题。切换到“快捷转换与设置”可使用原有剪贴板操作或更改设置，切换页签保留编辑内容。关闭窗口会清空编辑内容，请先复制原文或保存图片。
 
 ## 排版
 

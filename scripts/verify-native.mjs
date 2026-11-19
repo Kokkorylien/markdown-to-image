@@ -40,7 +40,7 @@ for (let i = 0; i < results.length; i++) {
 console.log('PASS: native render, table, syntax highlighting, math, dark theme, long image bottom');
 const settingsResult = path.join(output, 'settings-result.json');
 await fs.rm(settingsResult, { force: true });
-const settingsProcess = spawn(exe, ['--verify-settings', settingsResult], { cwd: root, windowsHide: true, stdio: 'inherit' });
+const settingsProcess = spawn(exe, ['--verify-settings', settingsResult, path.join(root, 'tests', 'editor-preview.js')], { cwd: root, windowsHide: true, stdio: 'inherit' });
 const settingsCode = await new Promise((resolve, reject) => { settingsProcess.on('error', reject); settingsProcess.on('exit', resolve); });
 assert.equal(settingsCode, 0, 'Native settings verification failed');
 const settings = JSON.parse(await fs.readFile(settingsResult, 'utf8'));
@@ -50,6 +50,8 @@ assert.ok(settings.hotkey && settings.pasteHotkey && settings.outputDir);
 assert.equal(settings.themeChecks.length, 2);
 assert.deepEqual(settings.themeChecks.map(value => value.theme).sort(), ['dark', 'light']);
 assert.deepEqual(settings.languageChecks.map(value => value.language).sort(), ['en', 'zh-CN']);
+assert.equal(settings.editorChecks.ok, true);
+console.log('PASS: real split editor, live rendering, IME, rapid input, tab state, themes, languages, editor image copy and save');
 console.log('PASS: real WebView2 settings page, initial native response, save settings, page screenshot');
 console.log('PASS: theme dropdown updates UI, persisted config, and actual PNG colors');
 console.log('PASS: Chinese/English UI, language persistence, native validation, and image placeholders');

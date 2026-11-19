@@ -8,6 +8,9 @@
       document.documentElement.lang = value;
       document.title = catalogs[value].settingsTitle;
       for (const node of document.querySelectorAll('[data-i18n]')) node.textContent = catalogs[value][node.dataset.i18n];
+      for (const attribute of ['placeholder', 'title', 'aria-label']) {
+        for (const node of document.querySelectorAll(`[data-i18n-${attribute}]`)) node.setAttribute(attribute, catalogs[value][node.getAttribute(`data-i18n-${attribute}`)]);
+      }
     }
   };
 })();

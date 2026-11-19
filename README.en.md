@@ -8,7 +8,7 @@ The app uses C# / WinForms and the system's installed WebView2 Runtime. It does 
 
 ## Download and run
 
-Download `MarkdownToImage-v1.0.0-win32-x64.zip` from [GitHub Releases](https://github.com/Kokkorylien/markdown-to-image/releases/latest), extract the entire folder, and run `MarkdownToImage.exe`. Keep all files in the extracted folder.
+Download `MarkdownToImage-v1.1.0-win32-x64.zip` from [GitHub Releases](https://github.com/Kokkorylien/markdown-to-image/releases/latest), extract the entire folder, and run `MarkdownToImage.exe`. Keep all files in the extracted folder.
 
 Requires **Windows x64**, **.NET Framework 4.8**, and **Microsoft Edge WebView2 Runtime**. Windows 10/11 commonly have these components installed. If WebView2 is missing, install the [official Microsoft runtime](https://go.microsoft.com/fwlink/p/?LinkId=2124703), then start the app again. This release contains only the lightweight app; no bundled browser version is provided.
 
@@ -29,6 +29,12 @@ The **App and image theme** selector applies light or dark colors to settings an
 **Copy image after saving** is enabled by default. Turn it off to save a PNG while keeping the original clipboard text. The **Convert and copy image** button always puts an image in the clipboard and does not create a file.
 
 When the clipboard already contains an image, Ctrl+Alt+V pastes that image directly. To convert different text, copy Markdown again. Keep the intended input active during conversion. A normal-permission process cannot automatically send paste keys to an administrator-permission window.
+
+## Editor and live preview
+
+Double-click the tray icon to open **Editor and preview**. Type or paste plain-text Markdown in the left pane; the right pane updates automatically with tables, syntax highlighting, and math. Previewing does not change the clipboard.
+
+**Copy as image** converts the current editor text to an image for Ctrl+V. **Save as image** uses the configured save folder, image width, and automatic copy preference. The preview follows the selected language and light/dark theme. Switch to **Shortcuts and settings** for the original clipboard actions and preferences; switching tabs keeps your text. Closing the window clears the editor, so copy the source or save an image first.
 
 ## Rendering
 

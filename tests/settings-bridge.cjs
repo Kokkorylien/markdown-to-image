@@ -24,7 +24,7 @@ async function main() {
   const state = { hotkey: 'Control+Alt+Shift+M', pasteHotkey: 'Control+Alt+V', outputDir: 'C:\\Pictures\\Markdown', width: 1080, theme: 'dark', language: 'zh-CN', copyAfterExport: true, status: '准备就绪', exporting: false };
   const requests = [];
   const context = vm.createContext({
-    document: { getElementById: element, querySelectorAll: () => [...elements.values()].filter(value => value.dataset.i18n), documentElement: { dataset: {} } },
+    document: { getElementById: element, querySelectorAll: selector => selector === '[data-i18n]' ? [...elements.values()].filter(value => value.dataset.i18n) : [], documentElement: { dataset: {} } },
     markdownTranslations: catalogs,
     chrome: { webview: {
       addEventListener(type, callback) { assert.equal(type, 'message'); messageListener = callback; },

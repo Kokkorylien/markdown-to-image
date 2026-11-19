@@ -12,6 +12,9 @@ using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
+[assembly: System.Reflection.AssemblyVersion("1.1.0.0")]
+[assembly: System.Reflection.AssemblyFileVersion("1.1.0.0")]
+
 internal static class Program
 {
     [STAThread]
@@ -99,7 +102,7 @@ internal sealed class App : Form
             renderer.CoreWebView2.WebMessageReceived += RenderMessage;
             await Navigate(renderer, Origin + "export.html");
             if (args.Length > 0 && args[0] == "--verify") { await Verify(args[1]); return; }
-            if (args.Length > 0 && args[0] == "--verify-settings") { await VerifySettings(args[1]); return; }
+            if (args.Length > 0 && args[0] == "--verify-settings") { await VerifySettings(args[1], args.Length > 2 ? args[2] : null); return; }
             if (args.Length > 0 && args[0] == "--export") {
                 int index = Array.IndexOf(args, "--output");
                 if (index < 0 || index + 1 == args.Length) throw new Exception("Usage: --export input.md --output output.png");
@@ -205,7 +208,7 @@ internal sealed class App : Form
     Dictionary<string, object> State()
     {
         var data = new Dictionary<string, object>(config);
-        data["status"] = status; data["exporting"] = busy; data["recentFile"] = recentFile; data["version"] = "1.0.0-light";
+        data["status"] = status; data["exporting"] = busy; data["recentFile"] = recentFile; data["version"] = "1.1.0-light";
         return data;
     }
     void SetStatus(string value)
@@ -238,7 +241,7 @@ internal sealed class App : Form
         }
     }
 
-    async Task<Dictionary<string, object>> ConvertClipboard(bool copyOnly, IntPtr target)
+    async Task<Dictionary<string, object>> ConvertClipboard(bool copyOnly, IntPtr target, string markdown = null)
     {
         if (busy) return new Dictionary<string, object> { {"ok", false}, {"message", L.T("busy")} };
         busy = true;
@@ -247,14 +250,15 @@ internal sealed class App : Form
         string saved = null;
         SetStatus(L.T("generating"));
         try {
-            string markdown = Clipboard.GetText();
+            bool fromEditor = markdown != null;
+            if (!fromEditor) markdown = Clipboard.GetText();
             if (string.IsNullOrWhiteSpace(markdown)) {
-                if (target != IntPtr.Zero && Clipboard.ContainsImage()) {
+                if (!fromEditor && target != IntPtr.Zero && Clipboard.ContainsImage()) {
                     await Native.Paste(target); copied = true;
                     SetStatus(L.T("pastedExisting"));
                     return new Dictionary<string, object> { {"ok", true}, {"copied", true}, {"pasteSent", true} };
                 }
-                throw new Exception(L.T("clipboardEmpty"));
+                throw new Exception(L.T(fromEditor ? "editorEmpty" : "clipboardEmpty"));
             }
             var result = await Render(markdown, Convert.ToInt32(config["width"]), Convert.ToString(config["theme"]));
             if (!copyOnly) {
@@ -282,7 +286,7 @@ internal sealed class App : Form
         if (settings != null) { settings.Show(); settings.Activate(); return; }
         bool dark = Convert.ToString(config["theme"]) == "dark";
         var background = dark ? Color.FromArgb(23, 25, 29) : Color.FromArgb(245, 247, 250);
-        var window = new Form { Text = L.T("settingsTitle"), ClientSize = new Size(650, 870), MinimumSize = new Size(600, 650), StartPosition = FormStartPosition.CenterScreen, BackColor = background };
+        var window = new Form { Text = L.T("settingsTitle"), ClientSize = new Size(1100, 800), MinimumSize = new Size(760, 600), StartPosition = FormStartPosition.CenterScreen, BackColor = background };
         var view = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = background };
         var loading = new Label { Text = L.T("loadingSettings"), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, BackColor = background, ForeColor = dark ? Color.FromArgb(165, 175, 188) : Color.FromArgb(92, 104, 120) };
         settings = window; settingsView = view;
@@ -317,6 +321,8 @@ internal sealed class App : Form
             }
             else if (channel == "export-clipboard") value = await ConvertClipboard(false, IntPtr.Zero);
             else if (channel == "copy-clipboard-image") value = await ConvertClipboard(true, IntPtr.Zero);
+            else if (channel == "export-markdown") value = await ConvertClipboard(false, IntPtr.Zero, Convert.ToString(message["value"]));
+            else if (channel == "copy-markdown-image") value = await ConvertClipboard(true, IntPtr.Zero, Convert.ToString(message["value"]));
             else if (channel == "set-copy-after-export") { config["copyAfterExport"] = Convert.ToBoolean(message["value"]); Save(); SetStatus(L.T("autoCopySaved")); value = State(); }
             else if (channel == "set-theme") { SetTheme(Convert.ToString(message["value"])); value = State(); }
             else if (channel == "set-language") { SetLanguage(Convert.ToString(message["value"])); value = State(); }
@@ -427,7 +433,7 @@ internal sealed class App : Form
         Exit();
     }
 
-    async Task VerifySettings(string resultFile)
+    async Task VerifySettings(string resultFile, string editorScript)
     {
         var view = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Color.FromArgb(245, 247, 250) };
         Controls.Add(view); view.BringToFront(); settingsView = view;
@@ -441,10 +447,30 @@ internal sealed class App : Form
         };
         await Navigate(view, Origin + "settings.html");
         await settingsReady.Task;
-        await view.CoreWebView2.CallDevToolsProtocolMethodAsync("Emulation.setDeviceMetricsOverride", "{\"width\":650,\"height\":870,\"deviceScaleFactor\":1,\"mobile\":false}");
+        await view.CoreWebView2.CallDevToolsProtocolMethodAsync("Emulation.setDeviceMetricsOverride", "{\"width\":1100,\"height\":800,\"deviceScaleFactor\":1,\"mobile\":false}");
         var values = Json.Decode(await view.CoreWebView2.ExecuteScriptAsync("({status:document.getElementById('status').textContent,hotkey:document.getElementById('hotkey').value,pasteHotkey:document.getElementById('paste-hotkey').value,theme:document.getElementById('theme').value,outputDir:document.getElementById('output-dir').textContent,background:getComputedStyle(document.body).backgroundColor})"));
         if (Convert.ToString(values["hotkey"]) != Convert.ToString(config["hotkey"]) || Convert.ToString(values["status"]).Contains("undefined")) throw new Exception("设置页未正确读取原生配置。");
+        if (editorScript != null) {
+            var originalConfig = new Dictionary<string, object>(config);
+            SnapshotClipboard();
+            config["outputDir"] = Path.Combine(Path.GetDirectoryName(resultFile), "editor-export");
+            try {
+                saved = new TaskCompletionSource<Dictionary<string, object>>();
+                await view.CoreWebView2.ExecuteScriptAsync(File.ReadAllText(editorScript));
+                var editorChecks = await saved.Task;
+                if (!Convert.ToBoolean(editorChecks["ok"])) throw new Exception("Editor verification failed: " + editorChecks["message"]);
+                if (!Clipboard.ContainsImage() || Clipboard.ContainsText()) throw new Exception("Editor did not copy an image to the clipboard.");
+                using (var image = Clipboard.GetImage()) if (image.Width != Convert.ToInt32(config["width"])) throw new Exception("Editor image uses the wrong export width.");
+                if (!File.Exists(Convert.ToString(editorChecks["output"]))) throw new Exception("Editor did not save an image.");
+                values["editorChecks"] = editorChecks;
+            }
+            finally {
+                config = originalConfig; L.Language = Convert.ToString(config["language"]); Save();
+                Clipboard.SetDataObject(integrationClipboard, true); integrationClipboard = null;
+            }
+        }
         var input = new { hotkey = config["hotkey"], pasteHotkey = config["pasteHotkey"], width = config["width"], theme = config["theme"] };
+        saved = new TaskCompletionSource<Dictionary<string, object>>();
         await view.CoreWebView2.ExecuteScriptAsync("window.markdownTool.saveConfig(" + Json.Encode(input) + ").then(value=>chrome.webview.postMessage({channel:'verification-result',value}));");
         var response = await saved.Task;
         if (!Convert.ToBoolean(response["ok"])) throw new Exception("设置保存失败：" + response["message"]);
@@ -503,7 +529,7 @@ internal sealed class App : Form
         Exit();
     }
 
-    async Task Integration(string input, string resultFile)
+    void SnapshotClipboard()
     {
         integrationClipboard = new DataObject();
         var original = Clipboard.GetDataObject();
@@ -515,6 +541,11 @@ internal sealed class App : Form
             if (image != null) value = image.Clone();
             if (value != null) integrationClipboard.SetData(format, false, value);
         }
+    }
+
+    async Task Integration(string input, string resultFile)
+    {
+        SnapshotClipboard();
         Clipboard.SetText(File.ReadAllText(input));
         var test = new Form { Text = "Markdown 轻量版粘贴测试", ClientSize = new Size(800, 650), StartPosition = FormStartPosition.CenterScreen };
         var view = new WebView2 { Dock = DockStyle.Fill };

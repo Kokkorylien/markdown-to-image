@@ -7,6 +7,7 @@ let appliedLanguage;
 function applyLanguage(language) {
   appliedLanguage = language;
   window.markdownI18n.apply(language);
+  window.markdownEditor?.configure({ language });
   byId('language').value = language;
   if (byId('saved').textContent) byId('saved').textContent = window.markdownI18n.text('saved');
 }
@@ -14,6 +15,7 @@ function applyLanguage(language) {
 function applyTheme(theme) {
   appliedTheme = theme;
   document.documentElement.dataset.theme = theme;
+  window.markdownEditor?.configure({ theme });
   byId('theme').value = theme;
 }
 
@@ -22,6 +24,7 @@ function updateStatus(state) {
   byId('status').textContent = state.status;
   byId('export').disabled = state.exporting;
   byId('copy-image').disabled = state.exporting;
+  window.markdownEditor?.setBusy(state.exporting);
   byId('open-recent').disabled = !state.recentFile;
 }
 function populate(state) {
